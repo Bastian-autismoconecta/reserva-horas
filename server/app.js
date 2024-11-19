@@ -149,7 +149,8 @@ app.get('/especialidades', (req,res)=>{
 app.post('/filtro-especialidades', (req,res)=>{
     const {especialidad} = req.body;
     conexion.query(`
-        SELECT odontologos.especialidad, 
+        SELECT odontologos.id_odontologo,
+                odontologos.especialidad, 
                odontologos.sucursal, 
                usuarios.nombre, 
                usuarios.apellido, 
@@ -165,6 +166,64 @@ app.post('/filtro-especialidades', (req,res)=>{
         }
     })
 })
+
+app.post('/filtro-sucursales', (req,res)=>{
+    const {sucursal} = req.body;
+    conexion.query(`
+        SELECT odontologos.id_odontologo,
+                odontologos.especialidad, 
+               odontologos.sucursal, 
+               usuarios.nombre, 
+               usuarios.apellido, 
+               usuarios.correo
+        FROM odontologos
+        INNER JOIN usuarios ON odontologos.id_usuarios = usuarios.id_usuarios
+        WHERE odontologos.sucursal = ?
+    `, [sucursal] , async (error, results)=>{
+        if (results.length == 0){
+
+        }else{
+            res.json(results);
+        }
+    })
+})
+
+app.post('/horas', (req,res)=>{
+    const {fecha, id_odontologo} = req.body
+    console.log(fecha, id_odontologo)
+    conexion.query(
+        `
+        SELECT horas.hora, fechas.fecha
+        FROM fechas
+        INNER JOIN horas ON horas.id_odontologo = fechas.id_odontologo AND horas.id_fecha = fechas.id_fecha
+        WHERE fechas.fecha = ? AND fechas.id_odontologo = ? `,
+        [fecha, id_odontologo],
+        (error, results) => {
+            if (error) {
+                return res.status(500).json({ error: "Error en el servidor" });
+            }
+            if (results.length === 0) {
+                return res.json([]);
+            }
+            res.json(results);
+        }
+    );
+})
+
+app.get('/fechas-disponibles', (req,res)=>{
+    conexion.query(`
+        SELECT fecha
+        FROM fechas
+        WHERE diponibilidad = "DISPONIBLE";
+        `
+        ,async (error, results)=>{
+        if (results.length == 0){
+        }else{
+            res.json(results);
+        }
+    })
+})
+
 
 // Cerrar sesión
 app.get('/logout', (req, res) => {
