@@ -106,10 +106,12 @@ app.post('/auth', async (req, res) => {
             } else {
                 req.session.loggedin = true;
                 req.session.id= results[0].id;
-                req.session.user = results[0].rut;
+                req.session.rut = results[0].rut;
                 req.session.name = results[0].nombre;
                 req.session.id_rol = results[0].id_rol;
-                res.json({ success: true, message: 'Iniciaste Sesion', user: req.session.user, icon:'success', rol: req.session.id_rol});
+                req.session.id_usuarios = results[0].id_usuarios;
+
+                res.json({ success: true, message: 'Iniciaste Sesion', rut: req.session.rut, icon:'success', rol: req.session.id_rol});
             }
         });
     } else {
@@ -120,9 +122,9 @@ app.post('/auth', async (req, res) => {
 // Obtener estado de sesión
 app.get('/session', (req, res) => {
     if (req.session.loggedin) {
-        res.json({ loggedIn: true, user: req.session.user, name: req.session.name, id_rol: req.session.id_rol });
+        res.json({ loggedIn: true, rut: req.session.rut, name: req.session.name, id_rol: req.session.id_rol, id_usuario: req.session.id_usuarios });
     } else {
-        res.json({ loggedIn: false });
+        res.json({id_usuario: req.session.id_usuarios });
     }
 });
 
@@ -136,6 +138,8 @@ app.get('/odontologos', (req,res)=>{
     })
 })
 
+
+
 app.get('/especialidades', (req,res)=>{
     conexion.query('SELECT especialidad FROM odontologos', async (error, results)=>{
         if (results.length == 0){
@@ -146,6 +150,39 @@ app.get('/especialidades', (req,res)=>{
     })
 })
 
+app.get('/sucursales', (req,res)=>{
+    conexion.query('SELECT sucursal FROM odontologos', async (error, results)=>{
+        if (results.length == 0){
+            console.log('no existen sucursales')
+        }else{
+            res.json(results);
+        }
+    })
+})
+
+// app.post('/reservar-hora', (req,res)=>{
+//     const {fecha, hora, id_usuarios}
+// })
+
+app.post('/pacientes', (req,res)=>{
+    const {id_usuarios} = req.body;
+    console.log(req.body)
+    console.log('ID USUARIO EN HORAS:', id_usuarios)
+    conexion.query(
+        `
+        SELECT p.id_paciente, u.nombre, u.rut
+        FROM usuarios u
+        INNER JOIN pacientes p ON p.id_usuarios = u.id_usuarios
+        WHERE u.id_usuarios = ?;
+        `,[id_usuarios]
+        , async (error, results)=>{
+        if (results.length == 0){
+            console.log('no existen pacientes')
+        }else{
+            res.json(results);
+        }
+    })
+})
 app.post('/filtro-especialidades', (req,res)=>{
     const {especialidad} = req.body;
     conexion.query(`
@@ -196,7 +233,7 @@ app.post('/horas', (req,res)=>{
         SELECT horas.hora, fechas.fecha
         FROM fechas
         INNER JOIN horas ON horas.id_odontologo = fechas.id_odontologo AND horas.id_fecha = fechas.id_fecha
-        WHERE fechas.fecha = ? AND fechas.id_odontologo = ? `,
+        WHERE fechas.fecha = ? AND fechas.id_odontologo = ? AND horas.disponibilidad = "DISPONIBLE"`,
         [fecha, id_odontologo],
         (error, results) => {
             if (error) {
@@ -210,10 +247,10 @@ app.post('/horas', (req,res)=>{
     );
 })
 
-app.get('/fechas-disponibles', (req,res)=>{
+app.get('/horas-disponibles', (req,res)=>{
     conexion.query(`
-        SELECT fecha
-        FROM fechas
+        SELECT horas
+        FROM horas
         WHERE diponibilidad = "DISPONIBLE";
         `
         ,async (error, results)=>{
